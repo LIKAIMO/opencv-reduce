@@ -55,6 +55,9 @@ private:
 
     //reduce image
     bool m_reduceFlag;
+    bool m_redChannelFlag;
+    bool m_greenChannelFlag;
+    bool m_blueChannelFlag;
 
     //set threshold
     uchar m_threshold;
@@ -62,12 +65,16 @@ private:
 public:
     void initAll(void);
     void initConnect(void);
+    void imageReduce(Mat &t_mat, int t_type);
     void imageShow(Mat &t_mat, int t_type);
+    void redEvent(void);
+    void greenEvent(void);
+    void blueEvent(void);
+    void rgbEvent(void);
 
 public slots:
     void openCamera(void);
     void getFrame(void);
-    void imageReduce(void);
     void changeRed(void);
     void changeGreen(void);
     void changeBlue(void);
@@ -77,6 +84,7 @@ public slots:
     void displayChannelRData(void);
     void displayChannelGData(void);
     void displayChannelBData(void);
+    void displayRGBImage(void);
 };
 
 #endif // COLORREDUCE_H

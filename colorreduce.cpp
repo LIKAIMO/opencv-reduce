@@ -5,7 +5,8 @@ colorReduce::colorReduce(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::colorReduce),m_openFlag(false),m_frameFlag(false),m_redFlag(true),
     m_greenFlag(false),m_blueFlag(false),m_redValue(0),m_greenValue(0),
-    m_blueValue(0),m_reduceFlag(false),m_threshold(5)
+    m_blueValue(0),m_reduceFlag(false),m_redChannelFlag(false),m_greenChannelFlag(false),
+    m_blueChannelFlag(false),m_threshold(5)
 {
     ui->setupUi(this);
     initAll();
@@ -39,7 +40,7 @@ void colorReduce::initConnect()
 {
     connect(ui->m_openVedio,SIGNAL(clicked(bool)),this,SLOT(openCamera()));
     connect(ui->m_getFrame,SIGNAL(clicked(bool)),this,SLOT(getFrame()));
-    connect(ui->m_reduce,SIGNAL(clicked(bool)),this,SLOT(imageReduce()));
+    connect(ui->m_reduce,SIGNAL(clicked(bool)),this,SLOT(displayRGBImage()));
     connect(ui->m_red,SIGNAL(clicked(bool)),this,SLOT(changeRed()));
     connect(ui->m_green,SIGNAL(clicked(bool)),this,SLOT(changeGreen()));
     connect(ui->m_blue,SIGNAL(clicked(bool)),this,SLOT(changeBlue()));
@@ -68,6 +69,63 @@ void colorReduce::imageShow(Mat &t_mat, int t_type)
     }
 }
 
+void colorReduce::redEvent()
+{
+    if(!m_redFlag)
+    {
+        m_redFlag = true;
+        m_greenFlag = false;
+        m_blueFlag = false;
+        m_redValue = ui->m_redValueText->text().toInt();
+        ui->m_colorValue->setValue(m_redValue);
+        ui->m_red->setStyleSheet("background-color: rgb(255,0,0);");
+        ui->m_green->setStyleSheet("background-color: rgb(255,255,255);");
+        ui->m_blue->setStyleSheet("background-color: rgb(255,255,255);");
+    }
+}
+
+void colorReduce::greenEvent()
+{
+    if(!m_greenFlag)
+    {
+        m_greenFlag = true;
+        m_redFlag = false;
+        m_blueFlag = false;
+        m_greenValue = ui->m_greenValueText->text().toInt();
+        ui->m_colorValue->setValue(m_greenValue);
+        ui->m_red->setStyleSheet("background-color: rgb(255,255,255);");
+        ui->m_green->setStyleSheet("background-color: rgb(0,255,0);");
+        ui->m_blue->setStyleSheet("background-color: rgb(255,255,255);");
+    }
+}
+
+void colorReduce::blueEvent()
+{
+    if(!m_blueFlag)
+    {
+        m_blueFlag = true;
+        m_redFlag = false;
+        m_greenFlag = false;
+        m_blueValue = ui->m_blueValueText->text().toInt();
+        ui->m_colorValue->setValue(m_blueValue);
+        ui->m_red->setStyleSheet("background-color: rgb(255,255,255);");
+        ui->m_green->setStyleSheet("background-color: rgb(255,255,255);");
+        ui->m_blue->setStyleSheet("background-color: rgb(0,0,255);");
+    }
+}
+
+void colorReduce::rgbEvent()
+{
+    if(!m_reduceFlag)
+    {
+        m_reduceFlag = true;
+        m_redChannelFlag = false;
+        m_greenChannelFlag = false;
+        m_blueChannelFlag = false;
+        imageReduce(m_frame, RGB);
+    }
+}
+
 void colorReduce::openCamera()
 {
 
@@ -93,6 +151,10 @@ void colorReduce::getFrame()
             m_frameFlag = true;
             split(m_frame,m_channel);
             imageShow(m_frame,RGB);
+            m_reduceFlag = false;
+            m_redChannelFlag = false;
+            m_greenChannelFlag = false;
+            m_blueChannelFlag = false;
         }
         else
         {
@@ -106,22 +168,39 @@ void colorReduce::getFrame()
     }
 }
 
-void colorReduce::imageReduce()
+void colorReduce::imageReduce(Mat &t_mat, int t_type)
 {
     if(m_frameFlag)
     {
-        if(!m_reduceFlag)
+        bool t_bThreshold;
+        for(int i = 0; i < t_mat.rows; i++)
         {
-            m_reduceFlag = true;
-        }
-
-        for(int i = 0; i < m_frame.rows; i++)
-        {
-            for(int j = 0; j < m_frame.cols; j++)
+            for(int j = 0; j < t_mat.cols; j++)
             {
-                if((abs(m_frame.at<Vec3b>(i,j)[R] - m_redValue) <= m_threshold)
-                    && (abs(m_frame.at<Vec3b>(i,j)[G] - m_greenValue) <= m_threshold)
-                    && (abs(m_frame.at<Vec3b>(i,j)[B] - m_blueValue) <= m_threshold))
+                if(t_type == RGB)
+                {
+                    t_bThreshold = ((abs(t_mat.at<Vec3b>(i,j)[R] - m_redValue) <= m_threshold)
+                                    && (abs(t_mat.at<Vec3b>(i,j)[G] - m_greenValue) <= m_threshold)
+                                    && (abs(t_mat.at<Vec3b>(i,j)[B] - m_blueValue) <= m_threshold));
+                }
+                else if(t_type == GRAY)
+                {
+                    uchar t_value;
+                    if(m_redChannelFlag)
+                    {
+                        t_value = m_redValue;
+                    }
+                    else if(m_greenChannelFlag)
+                    {
+                        t_value = m_greenValue;
+                    }
+                    else
+                    {
+                        t_value = m_blueValue;
+                    }
+                    t_bThreshold = (abs(t_mat.at<uchar>(i,j) - t_value) <= m_threshold);
+                }
+                if(t_bThreshold)
                 {
                     m_grayImage.at<uchar>(i,j) = 255;
                 }
@@ -148,47 +227,17 @@ void colorReduce::imageReduce()
 
 void colorReduce::changeRed()
 {
-    if(!m_redFlag)
-    {
-        m_redFlag = true;
-        m_greenFlag = false;
-        m_blueFlag = false;
-        m_redValue = ui->m_redValueText->text().toInt();
-        ui->m_colorValue->setValue(m_redValue);
-        ui->m_red->setStyleSheet("background-color: rgb(255,0,0);");
-        ui->m_green->setStyleSheet("background-color: rgb(255,255,255);");
-        ui->m_blue->setStyleSheet("background-color: rgb(255,255,255);");
-    }
+    redEvent();
 }
 
 void colorReduce::changeGreen()
 {
-    if(!m_greenFlag)
-    {
-        m_greenFlag = true;
-        m_redFlag = false;
-        m_blueFlag = false;
-        m_greenValue = ui->m_greenValueText->text().toInt();
-        ui->m_colorValue->setValue(m_greenValue);
-        ui->m_red->setStyleSheet("background-color: rgb(255,255,255);");
-        ui->m_green->setStyleSheet("background-color: rgb(0,255,0);");
-        ui->m_blue->setStyleSheet("background-color: rgb(255,255,255);");
-    }
+    greenEvent();
 }
 
 void colorReduce::changeBlue()
 {
-    if(!m_blueFlag)
-    {
-        m_blueFlag = true;
-        m_redFlag = false;
-        m_greenFlag = false;
-        m_blueValue = ui->m_blueValueText->text().toInt();
-        ui->m_colorValue->setValue(m_blueValue);
-        ui->m_red->setStyleSheet("background-color: rgb(255,255,255);");
-        ui->m_green->setStyleSheet("background-color: rgb(255,255,255);");
-        ui->m_blue->setStyleSheet("background-color: rgb(0,0,255);");
-    }
+    blueEvent();
 }
 
 void colorReduce::changeColorValue()
@@ -212,7 +261,25 @@ void colorReduce::changeColorValue()
         m_blueValue = ui->m_colorValue->value();
         ui->m_blueValueText->setText(QString::number(m_blueValue));
     }
-    imageReduce();
+    if(m_reduceFlag)
+    {
+        imageReduce(m_frame,RGB);
+    }
+    else
+    {
+        if(m_redChannelFlag)
+        {
+            imageReduce(m_channel[R],GRAY);
+        }
+        else if(m_greenChannelFlag)
+        {
+            imageReduce(m_channel[G],GRAY);
+        }
+        else
+        {
+            imageReduce(m_channel[B],GRAY);
+        }
+    }
 }
 
 void colorReduce::cameraClose()
@@ -231,54 +298,61 @@ void colorReduce::cameraClose()
 
 void colorReduce::reduceClose()
 {
-    if(m_reduceFlag)
+    if(m_reduceFlag || m_redChannelFlag || m_greenChannelFlag || m_blueChannelFlag)
     {
         imageShow(m_frame,RGB);
         m_reduceFlag = false;
+        m_redChannelFlag = false;
+        m_greenChannelFlag = false;
+        m_blueChannelFlag = false;
+    }
+    else
+    {
+        qDebug() << "no image reducing" << endl;
     }
 }
 
 void colorReduce::displayChannelRData()
 {
-    imageShow(m_channel[R],GRAY);
-//    ui->m_msg->clear();
-//    QString t_str = "";
-//    for(int i = 0; i < m_channel[R].rows; i++)
-//    {
-//        for(int j = 0; j < m_channel[R].cols; j++)
-//        {
-//            t_str += QString::number(m_channel[R].at<uchar>(i,j)) + " ";
-//        }
-//    }
-//    ui->m_msg->setText(t_str);
+    if(!m_redChannelFlag)
+    {
+        m_redChannelFlag = true;
+        m_greenChannelFlag = false;
+        m_blueChannelFlag = false;
+        m_reduceFlag = false;
+        redEvent();
+        imageReduce(m_channel[R],GRAY);
+    }
 }
 
 void colorReduce::displayChannelGData()
 {
-    imageShow(m_channel[G],GRAY);
-//    ui->m_msg->clear();
-//    QString t_str = "";
-//    for(int i = 0; i < m_channel[G].rows; i++)
-//    {
-//        for(int j = 0; j < m_channel[G].cols; j++)
-//        {
-//            t_str += QString::number(m_channel[G].at<uchar>(i,j)) + " ";
-//        }
-//    }
-//    ui->m_msg->setText(t_str);
+
+    if(!m_greenChannelFlag)
+    {
+        m_redChannelFlag = false;
+        m_greenChannelFlag = true;
+        m_blueChannelFlag = false;
+        m_reduceFlag = false;
+        greenEvent();
+        imageReduce(m_channel[G],GRAY);
+    }
 }
 
 void colorReduce::displayChannelBData()
 {
-    imageShow(m_channel[B],GRAY);
-//    ui->m_msg->clear();
-//    QString t_str = "";
-//    for(int i = 0; i < m_channel[B].rows; i++)
-//    {
-//        for(int j = 0; j < m_channel[B].cols; j++)
-//        {
-//            t_str += QString::number(m_channel[B].at<uchar>(i,j)) + " ";
-//        }
-//    }
-//    ui->m_msg->setText(t_str);
+    if(!m_blueChannelFlag)
+    {
+        m_redChannelFlag = false;
+        m_greenChannelFlag = false;
+        m_blueChannelFlag = true;
+        m_reduceFlag = false;
+        blueEvent();
+        imageReduce(m_channel[B],GRAY);
+    }
+}
+
+void colorReduce::displayRGBImage()
+{
+    rgbEvent();
 }
