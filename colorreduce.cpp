@@ -6,7 +6,7 @@ colorReduce::colorReduce(QWidget *parent) :
     ui(new Ui::colorReduce),m_openFlag(false),m_frameFlag(false),m_redFlag(true),
     m_greenFlag(false),m_blueFlag(false),m_redValue(0),m_greenValue(0),
     m_blueValue(0),m_reduceFlag(false),m_redChannelFlag(false),m_greenChannelFlag(false),
-    m_blueChannelFlag(false),m_threshold(5)
+    m_blueChannelFlag(false),m_threshold(5),m_isRGB(true)
 {
     ui->setupUi(this);
     initAll();
@@ -34,6 +34,8 @@ void colorReduce::initAll()
     ui->m_green->setStyleSheet("background-color: rgb(255,255,255);");
     ui->m_blue->setStyleSheet("background-color: rgb(255,255,255);");
     m_grayImage = Mat::zeros(480,640,CV_8U);
+    ui->m_RGBButton->setStyleSheet("background-color: rgb(255,255,0);");
+    ui->m_HSVButton->setStyleSheet("background-color: rgb(255,255,255);");
 }
 
 void colorReduce::initConnect()
@@ -50,6 +52,8 @@ void colorReduce::initConnect()
     connect(ui->m_channelR,SIGNAL(clicked(bool)),this,SLOT(displayChannelRData()));
     connect(ui->m_channelG,SIGNAL(clicked(bool)),this,SLOT(displayChannelGData()));
     connect(ui->m_channelB,SIGNAL(clicked(bool)),this,SLOT(displayChannelBData()));
+    connect(ui->m_RGBButton,SIGNAL(clicked(bool)),this,SLOT(colorSpaceRGB()));
+    connect(ui->m_HSVButton,SIGNAL(clicked(bool)),this,SLOT(colorSpaceHSV()));
 }
 
 void colorReduce::imageShow(Mat &t_mat, int t_type)
@@ -76,6 +80,7 @@ void colorReduce::redEvent()
         m_redFlag = true;
         m_greenFlag = false;
         m_blueFlag = false;
+
         m_redValue = ui->m_redValueText->text().toInt();
         ui->m_colorValue->setValue(m_redValue);
         ui->m_red->setStyleSheet("background-color: rgb(255,0,0);");
@@ -91,6 +96,7 @@ void colorReduce::greenEvent()
         m_greenFlag = true;
         m_redFlag = false;
         m_blueFlag = false;
+
         m_greenValue = ui->m_greenValueText->text().toInt();
         ui->m_colorValue->setValue(m_greenValue);
         ui->m_red->setStyleSheet("background-color: rgb(255,255,255);");
@@ -106,6 +112,7 @@ void colorReduce::blueEvent()
         m_blueFlag = true;
         m_redFlag = false;
         m_greenFlag = false;
+
         m_blueValue = ui->m_blueValueText->text().toInt();
         ui->m_colorValue->setValue(m_blueValue);
         ui->m_red->setStyleSheet("background-color: rgb(255,255,255);");
@@ -148,8 +155,18 @@ void colorReduce::getFrame()
     {
         if(m_camera->read(m_frame))
         {
+            if(!m_isRGB)
+            {
+//                cvtColor(m_frame,m_imageHSV,COLOR_BGR2HSV);
+//                split(m_imageHSV,m_channel);
+                cvtColor(m_frame,m_frame,COLOR_BGR2HSV);
+                split(m_frame,m_channel);
+            }
+            else
+            {
+                split(m_frame,m_channel);
+            }
             m_frameFlag = true;
-            split(m_frame,m_channel);
             imageShow(m_frame,RGB);
             m_reduceFlag = false;
             m_redChannelFlag = false;
@@ -172,6 +189,8 @@ void colorReduce::imageReduce(Mat &t_mat, int t_type)
 {
     if(m_frameFlag)
     {
+        //if(m_isRGB)
+        {
         bool t_bThreshold;
         for(int i = 0; i < t_mat.rows; i++)
         {
@@ -218,6 +237,11 @@ void colorReduce::imageReduce(Mat &t_mat, int t_type)
         //threshold(m_grayImage, m_grayImage, m_redValue, 255, THRESH_BINARY);
         //显示处理后的结果
         imageShow(m_grayImage, GRAY);
+        }
+//        else
+//        {
+//            equalizeHist(m_channel[2],m_channel[2]);
+//        }
     }
     else
     {
@@ -249,16 +273,41 @@ void colorReduce::changeColorValue()
     if(m_redFlag)
     {
         m_redValue = ui->m_colorValue->value();
+        if(m_redValue > 255)
+        {
+            m_redValue = 255;
+        }
         ui->m_redValueText->setText(QString::number(m_redValue));
     }
     else if(m_greenFlag)
     {
         m_greenValue = ui->m_colorValue->value();
+        if(m_greenValue > 255)
+        {
+            m_greenValue = 255;
+        }
         ui->m_greenValueText->setText(QString::number(m_greenValue));
     }
     else if(m_blueFlag)
     {
         m_blueValue = ui->m_colorValue->value();
+        if(m_isRGB)
+        {
+            ui->m_colorValue->setMaximum(255);
+            if(m_blueValue > 255)
+            {
+                m_blueValue = 255;
+            }
+        }
+        else
+        {
+            ui->m_colorValue->setMaximum(179);
+            if(m_blueValue > 179)
+            {
+                m_blueValue = 179;
+            }
+        }
+
         ui->m_blueValueText->setText(QString::number(m_blueValue));
     }
     if(m_reduceFlag)
@@ -275,7 +324,7 @@ void colorReduce::changeColorValue()
         {
             imageReduce(m_channel[G],GRAY);
         }
-        else
+        else if(m_blueChannelFlag)
         {
             imageReduce(m_channel[B],GRAY);
         }
@@ -355,4 +404,38 @@ void colorReduce::displayChannelBData()
 void colorReduce::displayRGBImage()
 {
     rgbEvent();
+}
+
+void colorReduce::colorSpaceRGB()
+{
+    if(!m_isRGB)
+    {
+        m_isRGB = true;
+        ui->m_RGBButton->setStyleSheet("background-color: rgb(255,255,0);");
+        ui->m_HSVButton->setStyleSheet("background-color: rgb(255,255,255);");
+        m_redValue = 0;
+        m_greenValue = 0;
+        m_blueValue = 0;
+        ui->m_redValueText->setText("0");
+        ui->m_greenValueText->setText("0");
+        ui->m_blueValueText->setText("0");
+        ui->m_colorValue->setValue(0);
+    }
+}
+
+void colorReduce::colorSpaceHSV()
+{
+    if(m_isRGB)
+    {
+        m_isRGB = false;
+        ui->m_RGBButton->setStyleSheet("background-color: rgb(255,255,255);");
+        ui->m_HSVButton->setStyleSheet("background-color: rgb(255,255,0);");
+        m_redValue = 0;
+        m_greenValue = 0;
+        m_blueValue = 0;
+        ui->m_redValueText->setText("0");
+        ui->m_greenValueText->setText("0");
+        ui->m_blueValueText->setText("0");
+        ui->m_colorValue->setValue(0);
+    }
 }

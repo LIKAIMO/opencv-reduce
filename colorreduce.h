@@ -28,7 +28,8 @@ public:
         G,
         R,
         GRAY,
-        RGB
+        RGB,
+        HSV
     };
 
 private:
@@ -41,6 +42,7 @@ private:
 
     //save current frame
     Mat m_frame;
+    Mat m_imageHSV;
     Mat m_channel[3];
     Mat m_grayImage;
     bool m_frameFlag;
@@ -61,6 +63,9 @@ private:
 
     //set threshold
     uchar m_threshold;
+
+    //set current color space
+    bool m_isRGB; //true is RGB, false is HSV
 
 public:
     void initAll(void);
@@ -85,6 +90,8 @@ public slots:
     void displayChannelGData(void);
     void displayChannelBData(void);
     void displayRGBImage(void);
+    void colorSpaceRGB(void);
+    void colorSpaceHSV(void);
 };
 
 #endif // COLORREDUCE_H

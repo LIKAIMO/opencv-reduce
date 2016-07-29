@@ -88,7 +88,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>R</string>
+    <string>R-V</string>
    </property>
   </widget>
   <widget class="QPushButton" name="m_green">
@@ -101,7 +101,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>G</string>
+    <string>G-S</string>
    </property>
   </widget>
   <widget class="QPushButton" name="m_blue">
@@ -114,7 +114,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>B</string>
+    <string>B-H</string>
    </property>
   </widget>
   <widget class="QLineEdit" name="m_redValueText">
@@ -216,7 +216,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>channel-R</string>
+    <string>channel-R-V</string>
    </property>
   </widget>
   <widget class="QPushButton" name="m_channelG">
@@ -229,7 +229,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>channel-G</string>
+    <string>channel-G-S</string>
    </property>
   </widget>
   <widget class="QPushButton" name="m_channelB">
@@ -242,7 +242,33 @@
     </rect>
    </property>
    <property name="text">
-    <string>channel-B</string>
+    <string>channel-B-H</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="m_RGBButton">
+   <property name="geometry">
+    <rect>
+     <x>460</x>
+     <y>10</y>
+     <width>51</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>RGB</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="m_HSVButton">
+   <property name="geometry">
+    <rect>
+     <x>530</x>
+     <y>10</y>
+     <width>51</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>HSV</string>
    </property>
   </widget>
  </widget>
