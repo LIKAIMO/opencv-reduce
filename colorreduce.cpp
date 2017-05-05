@@ -16,7 +16,7 @@ colorReduce::colorReduce(QWidget *parent) :
     ui(new Ui::colorReduce),m_openFlag(false),m_frameFlag(false),m_redFlag(true),
     m_greenFlag(false),m_blueFlag(false),m_redValue(0),m_greenValue(0),
     m_blueValue(0),m_reduceFlag(false),m_redChannelFlag(false),m_greenChannelFlag(false),
-    m_blueChannelFlag(false),m_threshold(5),m_isRGB(true)
+    m_blueChannelFlag(false),m_threshold(5),m_isRGB(true),m_checkDirFlag(false)
 {
     ui->setupUi(this);
     initAll();
@@ -44,6 +44,7 @@ void colorReduce::initAll()
     ui->m_green->setStyleSheet("background-color: rgb(255,255,255);");
     ui->m_blue->setStyleSheet("background-color: rgb(255,255,255);");
     m_grayImage = Mat::zeros(480,640,CV_8U);
+    m_prevGrayImage = m_grayImage.clone();
     ui->m_RGBButton->setStyleSheet("background-color: rgb(255,255,0);");
     ui->m_HSVButton->setStyleSheet("background-color: rgb(255,255,255);");
     m_timer = new QTimer();
@@ -69,6 +70,7 @@ void colorReduce::initConnect()
     connect(ui->m_playVideo,SIGNAL(clicked(bool)),this,SLOT(playVideo()));
     connect(ui->m_closeVideo,SIGNAL(clicked(bool)),this,SLOT(closeVideo()));
     connect(m_timer,SIGNAL(timeout()),this,SLOT(timerReduce()));
+    connect(ui->m_dir,SIGNAL(clicked(bool)),this,SLOT(dirCheck()));
 }
 
 void colorReduce::imageShow(Mat &t_mat, int t_type)
@@ -169,6 +171,21 @@ void colorReduce::rgbEvent()
     }
 }
 
+void colorReduce::drawOptFlowMap(const Mat& flow, Mat& cflowmap, int step,
+                                 double, const Scalar& color)
+{
+    for(int y = 0; y < cflowmap.rows; y += step)
+    {
+        for(int x = 0; x < cflowmap.cols; x += step)
+        {
+            const Point2f& fxy = flow.at<Point2f>(y, x);
+            line(cflowmap, Point(x,y), Point(cvRound(x+fxy.x), cvRound(y+fxy.y)),
+                 color);
+            circle(cflowmap, Point(x,y), 2, color, -1);
+        }
+    }
+}
+
 void colorReduce::openCamera()
 {
 
@@ -193,8 +210,8 @@ void colorReduce::getFrame()
         {
             if(!m_isRGB)
             {
-//                cvtColor(m_frame,m_imageHSV,COLOR_BGR2HSV);
-//                split(m_imageHSV,m_channel);
+                //                cvtColor(m_frame,m_imageHSV,COLOR_BGR2HSV);
+                //                split(m_imageHSV,m_channel);
                 cvtColor(m_frame,m_frame,COLOR_BGR2HSV);
                 split(m_frame,m_channel);
             }
@@ -240,18 +257,33 @@ void colorReduce::timerReduce()
     {
         if(m_camera->read(m_frame))
         {
-            imageShow(m_frame,RGB);
+            if(m_checkDirFlag)
+            {
+                cvtColor(m_frame,m_grayImage,CV_BGR2GRAY);
+                calcOpticalFlowFarneback(m_prevGrayImage, m_grayImage, m_flow, 0.5, 3, 15, 3, 5, 1.2, 0);
+                cvtColor(m_prevGrayImage, m_cflow, CV_GRAY2BGR);
+                drawOptFlowMap(m_flow, m_cflow, 16, 1.5, Scalar(0, 255, 0));
+                swap(m_prevGrayImage,m_grayImage);
+                imageShow(m_cflow,RGB);
+            }
+            else
+            {
+                imageShow(m_frame,RGB);
+            }
         }
+
     }
     else
     {
         m_timer->stop();
+        m_checkDirFlag = false;
     }
 }
 
 void colorReduce::closeVideo()
 {
     m_timer->stop();
+    m_checkDirFlag = false;
 }
 
 void colorReduce::imageReduce(Mat &t_mat, int t_type)
@@ -309,23 +341,23 @@ void colorReduce::imageReduce(Mat &t_mat, int t_type)
         }
         else
         {
-//            int iLowH,iHighH;
-//            iLowH = m_hue-m_threshold;
-//            if(iLowH < 0)
-//            {
-//                iLowH = 0;
-//            }
-//            iHighH = m_hue+m_threshold;
-//            if(iLowH > 179)
-//            {
-//                iLowH = 179;
-//            }
+            //            int iLowH,iHighH;
+            //            iLowH = m_hue-m_threshold;
+            //            if(iLowH < 0)
+            //            {
+            //                iLowH = 0;
+            //            }
+            //            iHighH = m_hue+m_threshold;
+            //            if(iLowH > 179)
+            //            {
+            //                iLowH = 179;
+            //            }
 
-//            int iLowS,iHighS = 255;
-//            iLowS = m_saturation;
+            //            int iLowS,iHighS = 255;
+            //            iLowS = m_saturation;
 
-//            int iLowV,iHighV = 255;
-//            iLowV = m_value;
+            //            int iLowV,iHighV = 255;
+            //            iLowV = m_value;
 
             int iLowH = 100;
             int iHighH = 140;
@@ -446,7 +478,7 @@ void colorReduce::cameraClose()
     {
         m_openFlag = false;
         m_camera->release();
-         qDebug() << "close success" << endl;
+        qDebug() << "close success" << endl;
     }
     else
     {
@@ -552,6 +584,14 @@ void colorReduce::colorSpaceHSV()
         ui->m_greenValueText->setText("0");
         ui->m_blueValueText->setText("0");
         ui->m_colorValue->setValue(0);
+    }
+}
+
+void colorReduce::dirCheck()
+{
+    if(m_openFlag)
+    {
+        m_checkDirFlag = true;
     }
 }
 

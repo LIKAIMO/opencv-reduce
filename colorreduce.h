@@ -3,6 +3,8 @@
 
 #include <QWidget>
 #include <opencv2/opencv.hpp>
+#include <opencv2/imgproc/imgproc_c.h>
+#include <opencv2/video/tracking.hpp>
 #include <QDebug>
 #include <QImage>
 #include <QString>
@@ -54,6 +56,10 @@ private:
     Mat m_imageHSV;
     Mat m_channel[3];
     Mat m_grayImage;
+    //direction check
+    Mat m_prevGrayImage;
+    Mat m_cflow;
+    Mat m_flow;
     bool m_frameFlag;
 
     //color RGB value set
@@ -81,6 +87,9 @@ private:
     uchar m_saturation; //range: m_saturation~255
     uchar m_value;//range: m_value~255
 
+    //video stream flag
+    bool m_checkDirFlag;
+
 public:
     void initAll(void);
     void initConnect(void);
@@ -91,7 +100,8 @@ public:
     void blueEvent(void);
     void rgbEvent(void);
     void get_keyPoint(void);
-
+    void drawOptFlowMap(const Mat& flow, Mat& cflowmap, int step,
+                        double, const Scalar& color);
 public slots:
     void openCamera(void);
     void getFrame(void);
@@ -110,6 +120,7 @@ public slots:
     void displayRGBImage(void);
     void colorSpaceRGB(void);
     void colorSpaceHSV(void);
+    void dirCheck(void);
 };
 
 #endif // COLORREDUCE_H
