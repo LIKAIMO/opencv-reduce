@@ -1,6 +1,16 @@
 #include "colorreduce.h"
 #include "ui_colorreduce.h"
 
+/* HSV some color H value range
+ * Orange  0-22
+ * Yellow 22- 38
+ * Green 38-75
+ * Blue 75-130
+ * Violet 130-160
+ * Red 160-179
+ *
+ */
+
 colorReduce::colorReduce(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::colorReduce),m_openFlag(false),m_frameFlag(false),m_redFlag(true),
@@ -23,7 +33,7 @@ colorReduce::~colorReduce()
 
 void colorReduce::initAll()
 {
-    initConnect();
+
     ui->m_redValueText->setText(QString::number(m_redValue));
     ui->m_greenValueText->setText(QString::number(m_greenValue));
     ui->m_blueValueText->setText(QString::number(m_blueValue));
@@ -36,6 +46,8 @@ void colorReduce::initAll()
     m_grayImage = Mat::zeros(480,640,CV_8U);
     ui->m_RGBButton->setStyleSheet("background-color: rgb(255,255,0);");
     ui->m_HSVButton->setStyleSheet("background-color: rgb(255,255,255);");
+    m_timer = new QTimer();
+    initConnect();
 }
 
 void colorReduce::initConnect()
@@ -54,6 +66,9 @@ void colorReduce::initConnect()
     connect(ui->m_channelB,SIGNAL(clicked(bool)),this,SLOT(displayChannelBData()));
     connect(ui->m_RGBButton,SIGNAL(clicked(bool)),this,SLOT(colorSpaceRGB()));
     connect(ui->m_HSVButton,SIGNAL(clicked(bool)),this,SLOT(colorSpaceHSV()));
+    connect(ui->m_playVideo,SIGNAL(clicked(bool)),this,SLOT(playVideo()));
+    connect(ui->m_closeVideo,SIGNAL(clicked(bool)),this,SLOT(closeVideo()));
+    connect(m_timer,SIGNAL(timeout()),this,SLOT(timerReduce()));
 }
 
 void colorReduce::imageShow(Mat &t_mat, int t_type)
@@ -80,9 +95,16 @@ void colorReduce::redEvent()
         m_redFlag = true;
         m_greenFlag = false;
         m_blueFlag = false;
-
-        m_redValue = ui->m_redValueText->text().toInt();
-        ui->m_colorValue->setValue(m_redValue);
+        if(m_isRGB)
+        {
+            m_redValue = ui->m_redValueText->text().toInt();
+            ui->m_colorValue->setValue(m_redValue);
+        }
+        else
+        {
+            m_value = ui->m_redValueText->text().toInt();
+            ui->m_colorValue->setValue(m_value);
+        }
         ui->m_red->setStyleSheet("background-color: rgb(255,0,0);");
         ui->m_green->setStyleSheet("background-color: rgb(255,255,255);");
         ui->m_blue->setStyleSheet("background-color: rgb(255,255,255);");
@@ -96,9 +118,16 @@ void colorReduce::greenEvent()
         m_greenFlag = true;
         m_redFlag = false;
         m_blueFlag = false;
-
-        m_greenValue = ui->m_greenValueText->text().toInt();
-        ui->m_colorValue->setValue(m_greenValue);
+        if(m_isRGB)
+        {
+            m_greenValue = ui->m_greenValueText->text().toInt();
+            ui->m_colorValue->setValue(m_greenValue);
+        }
+        else
+        {
+            m_saturation = ui->m_greenValueText->text().toInt();
+            ui->m_colorValue->setValue(m_saturation);
+        }
         ui->m_red->setStyleSheet("background-color: rgb(255,255,255);");
         ui->m_green->setStyleSheet("background-color: rgb(0,255,0);");
         ui->m_blue->setStyleSheet("background-color: rgb(255,255,255);");
@@ -112,9 +141,16 @@ void colorReduce::blueEvent()
         m_blueFlag = true;
         m_redFlag = false;
         m_greenFlag = false;
-
-        m_blueValue = ui->m_blueValueText->text().toInt();
-        ui->m_colorValue->setValue(m_blueValue);
+        if(m_isRGB)
+        {
+            m_blueValue = ui->m_blueValueText->text().toInt();
+            ui->m_colorValue->setValue(m_blueValue);
+        }
+        else
+        {
+            m_hue = ui->m_blueValueText->text().toInt();
+            ui->m_colorValue->setValue(m_hue);
+        }
         ui->m_red->setStyleSheet("background-color: rgb(255,255,255);");
         ui->m_green->setStyleSheet("background-color: rgb(255,255,255);");
         ui->m_blue->setStyleSheet("background-color: rgb(0,0,255);");
@@ -165,6 +201,7 @@ void colorReduce::getFrame()
             else
             {
                 split(m_frame,m_channel);
+
             }
             m_frameFlag = true;
             imageShow(m_frame,RGB);
@@ -185,63 +222,133 @@ void colorReduce::getFrame()
     }
 }
 
+void colorReduce::playVideo()
+{
+    if(m_openFlag)
+    {
+        m_timer->start(30);
+    }
+    else
+    {
+        qDebug() << "the camera is not open" << endl;
+    }
+}
+
+void colorReduce::timerReduce()
+{
+    if(m_openFlag)
+    {
+        if(m_camera->read(m_frame))
+        {
+            imageShow(m_frame,RGB);
+        }
+    }
+    else
+    {
+        m_timer->stop();
+    }
+}
+
+void colorReduce::closeVideo()
+{
+    m_timer->stop();
+}
+
 void colorReduce::imageReduce(Mat &t_mat, int t_type)
 {
     if(m_frameFlag)
     {
-        //if(m_isRGB)
+        if(m_isRGB)
         {
-        bool t_bThreshold;
-        for(int i = 0; i < t_mat.rows; i++)
-        {
-            for(int j = 0; j < t_mat.cols; j++)
+            bool t_bThreshold;
+            for(int i = 0; i < t_mat.rows; i++)
             {
-                if(t_type == RGB)
+                for(int j = 0; j < t_mat.cols; j++)
                 {
-                    t_bThreshold = ((abs(t_mat.at<Vec3b>(i,j)[R] - m_redValue) <= m_threshold)
-                                    && (abs(t_mat.at<Vec3b>(i,j)[G] - m_greenValue) <= m_threshold)
-                                    && (abs(t_mat.at<Vec3b>(i,j)[B] - m_blueValue) <= m_threshold));
-                }
-                else if(t_type == GRAY)
-                {
-                    uchar t_value;
-                    if(m_redChannelFlag)
+                    if(t_type == RGB)
                     {
-                        t_value = m_redValue;
+                        t_bThreshold = ((abs(t_mat.at<Vec3b>(i,j)[R] - m_redValue) <= m_threshold)
+                                        && (abs(t_mat.at<Vec3b>(i,j)[G] - m_greenValue) <= m_threshold)
+                                        && (abs(t_mat.at<Vec3b>(i,j)[B] - m_blueValue) <= m_threshold));
                     }
-                    else if(m_greenChannelFlag)
+                    else if(t_type == GRAY)
                     {
-                        t_value = m_greenValue;
+                        uchar t_value;
+                        if(m_redChannelFlag)
+                        {
+                            t_value = m_redValue;
+                        }
+                        else if(m_greenChannelFlag)
+                        {
+                            t_value = m_greenValue;
+                        }
+                        else
+                        {
+                            t_value = m_blueValue;
+                        }
+                        t_bThreshold = (abs(t_mat.at<uchar>(i,j) - t_value) <= m_threshold);
+                    }
+                    if(t_bThreshold)
+                    {
+                        m_grayImage.at<uchar>(i,j) = 255;
                     }
                     else
                     {
-                        t_value = m_blueValue;
+                        m_grayImage.at<uchar>(i,j) = 0;
                     }
-                    t_bThreshold = (abs(t_mat.at<uchar>(i,j) - t_value) <= m_threshold);
-                }
-                if(t_bThreshold)
-                {
-                    m_grayImage.at<uchar>(i,j) = 255;
-                }
-                else
-                {
-                    m_grayImage.at<uchar>(i,j) = 0;
                 }
             }
-        }
 
 
-        //降噪
-        blur(m_grayImage,m_grayImage,Size(3,3));
-        //二值化处理
-        //threshold(m_grayImage, m_grayImage, m_redValue, 255, THRESH_BINARY);
-        //显示处理后的结果
-        imageShow(m_grayImage, GRAY);
+            //降噪
+            blur(m_grayImage,m_grayImage,Size(3,3));
+            //二值化处理
+            //threshold(m_grayImage, m_grayImage, m_redValue, 255, THRESH_BINARY);
+            //显示处理后的结果
+            imageShow(m_grayImage, GRAY);
         }
-//        else
-//        {
-//            equalizeHist(m_channel[2],m_channel[2]);
-//        }
+        else
+        {
+//            int iLowH,iHighH;
+//            iLowH = m_hue-m_threshold;
+//            if(iLowH < 0)
+//            {
+//                iLowH = 0;
+//            }
+//            iHighH = m_hue+m_threshold;
+//            if(iLowH > 179)
+//            {
+//                iLowH = 179;
+//            }
+
+//            int iLowS,iHighS = 255;
+//            iLowS = m_saturation;
+
+//            int iLowV,iHighV = 255;
+//            iLowV = m_value;
+
+            int iLowH = 100;
+            int iHighH = 140;
+
+            int iLowS = 90;
+            int iHighS = 255;
+
+            int iLowV = 90;
+            int iHighV = 255;
+
+            Mat t_imgThresholded;
+            equalizeHist(m_channel[2],m_channel[2]);
+            merge(m_channel,3,m_imageHSV);
+
+            inRange(m_imageHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), t_imgThresholded);
+
+            //开闭操作，去除噪声，增加连通域，若在意处理速度，可以只用开操作
+            Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));
+            morphologyEx(t_imgThresholded, t_imgThresholded, MORPH_OPEN, element);
+            morphologyEx(t_imgThresholded, t_imgThresholded, MORPH_CLOSE, element);
+
+            imageShow(t_imgThresholded,GRAY);
+        }
     }
     else
     {
@@ -272,19 +379,21 @@ void colorReduce::changeColorValue()
     }
     if(m_redFlag)
     {
-        m_redValue = ui->m_colorValue->value();
+        m_redValue = m_value = ui->m_colorValue->value();
         if(m_redValue > 255)
         {
             m_redValue = 255;
+            m_value = 255;
         }
         ui->m_redValueText->setText(QString::number(m_redValue));
     }
     else if(m_greenFlag)
     {
-        m_greenValue = ui->m_colorValue->value();
+        m_greenValue = m_saturation = ui->m_colorValue->value();
         if(m_greenValue > 255)
         {
             m_greenValue = 255;
+            m_saturation = 255;
         }
         ui->m_greenValueText->setText(QString::number(m_greenValue));
     }
@@ -416,6 +525,9 @@ void colorReduce::colorSpaceRGB()
         m_redValue = 0;
         m_greenValue = 0;
         m_blueValue = 0;
+        m_hue = 0;
+        m_saturation = 0;
+        m_value = 0;
         ui->m_redValueText->setText("0");
         ui->m_greenValueText->setText("0");
         ui->m_blueValueText->setText("0");
@@ -433,9 +545,18 @@ void colorReduce::colorSpaceHSV()
         m_redValue = 0;
         m_greenValue = 0;
         m_blueValue = 0;
+        m_hue = 0;
+        m_saturation = 0;
+        m_value = 0;
         ui->m_redValueText->setText("0");
         ui->m_greenValueText->setText("0");
         ui->m_blueValueText->setText("0");
         ui->m_colorValue->setValue(0);
     }
+}
+
+void get_keyPoint(void)
+{
+    vector<KeyPoint> keypoints;
+    Ptr<FeatureDetector> detector = FeatureDetector::create( "FAST" );
 }

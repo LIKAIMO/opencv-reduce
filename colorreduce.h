@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QImage>
 #include <QString>
+#include <QTimer>
 
 using namespace std;
 using namespace cv;
@@ -31,6 +32,14 @@ public:
         RGB,
         HSV
     };
+    enum
+    {
+        H,
+        S,
+        V
+    };
+    //∂® ±∆˜…Ë÷√
+    QTimer *m_timer;
 
 private:
     Ui::colorReduce *ui;
@@ -67,6 +76,11 @@ private:
     //set current color space
     bool m_isRGB; //true is RGB, false is HSV
 
+    //HSV range
+    uchar m_hue;//range: (m_hue - m_threshold)~(m_hue + m_threshold)
+    uchar m_saturation; //range: m_saturation~255
+    uchar m_value;//range: m_value~255
+
 public:
     void initAll(void);
     void initConnect(void);
@@ -76,10 +90,14 @@ public:
     void greenEvent(void);
     void blueEvent(void);
     void rgbEvent(void);
+    void get_keyPoint(void);
 
 public slots:
     void openCamera(void);
     void getFrame(void);
+    void playVideo(void);
+    void timerReduce(void);
+    void closeVideo(void);
     void changeRed(void);
     void changeGreen(void);
     void changeBlue(void);
